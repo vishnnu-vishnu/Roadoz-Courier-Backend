@@ -9,6 +9,7 @@ class UserBase(BaseModel):
     email: EmailStr
     phone: Optional[str] = None
     address: Optional[str] = None
+    location: Optional[str] = None
 
 
 class UserCreate(UserBase):
@@ -17,14 +18,21 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
+    """Edit profile — name, phone, address, location only. Email & password NOT allowed here."""
     name: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
-    password: Optional[str] = None
+    location: Optional[str] = None
 
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     id: str
+    name: str
+    email: EmailStr
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    location: Optional[str] = None
+    profile_image: Optional[str] = None
     role: UserRole
     is_active: bool
     created_at: datetime
@@ -34,7 +42,23 @@ class UserResponse(UserBase):
 
     @classmethod
     def model_validate(cls, obj, *args, **kwargs):
-        # Coerce string role → enum when coming from ORM
         if hasattr(obj, "role") and isinstance(obj.role, str):
             obj.__dict__["role"] = UserRole(obj.role)
         return super().model_validate(obj, *args, **kwargs)
+
+
+# ── Change Password schemas ────────────────────────────────────────────────────
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+    confirm_password: str
+
+
+class OTPVerifyRequest(BaseModel):
+    otp: str
+
+
+class ProfileImageResponse(BaseModel):
+    profile_image: str
+    message: str = "Profile image updated successfully"

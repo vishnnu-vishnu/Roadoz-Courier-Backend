@@ -28,11 +28,22 @@ async def redis_set(key: str, value: Any, expire: int = 300) -> bool:
         return False
 
 
+
 async def redis_get(key: str) -> Optional[str]:
     """Get a value from Redis."""
     try:
         r = await get_redis()
-        return await r.get(key)
+        value = await r.get(key)
+
+        if value is None:
+            return None
+
+        # 🔥 Fix: decode bytes → string
+        if isinstance(value, bytes):
+            return value.decode()
+
+        return value
+
     except Exception:
         return None
 
