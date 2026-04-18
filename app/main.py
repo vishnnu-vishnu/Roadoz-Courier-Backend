@@ -74,11 +74,17 @@ app = FastAPI(
 # ── Middleware ───────────────────────────────────────────────────────────────
 
 
+from fastapi.middleware.cors import CORSMiddleware
+
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://admin.roadozcourier.com" # production
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://admin.roadozcourier.com"
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
