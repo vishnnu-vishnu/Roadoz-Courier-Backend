@@ -72,9 +72,13 @@ app = FastAPI(
 )
 
 # ── Middleware ───────────────────────────────────────────────────────────────
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins_list,
+    allow_origins=[
+        "https://admin.roadozcourier.com"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
