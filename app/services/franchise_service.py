@@ -84,6 +84,8 @@ async def create_franchise(db: AsyncSession, data: FranchiseCreate) -> Franchise
     db.add(franchise)
     await db.flush()
 
+    await db.refresh(franchise)
+
     # Invalidate list cache
     await cache_delete("franchise_list")
 
@@ -195,6 +197,9 @@ async def update_franchise(db: AsyncSession, franchise_id: str, data: FranchiseU
             user.address = update_data["current_address"]
 
     await db.flush()
+
+    await db.refresh(franchise)
+
     await cache_delete(f"franchise:{franchise_id}")
     await cache_delete("franchise_list")
 
