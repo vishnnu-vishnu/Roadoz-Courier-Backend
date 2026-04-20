@@ -9,16 +9,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Deploy to EC2
+    - name: Deploy to server
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ubuntu
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
+          set -e
           cd /home/ubuntu/Roadoz-Courier-Backend
+
+          echo "Pulling latest code..."
           git pull origin main
+
+          echo "Activating venv..."
           source venv/bin/activate
+
+          echo "Installing dependencies..."
           pip install -r requirements.txt
+
+          echo "Running DB migrations..."
+          alembic upgrade head
+
+          echo "Restarting server..."
           sudo systemctl restart roadoz
-          echo "✅ Deployment successful"
+
+          echo "✅ Deployment completed successfully"
