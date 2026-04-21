@@ -5,11 +5,13 @@ from app.schemas.auth import (
     LoginRequest,
     TokenResponse,
     RefreshTokenRequest,
+    RoleCheckRequest,
+    RoleCheckResponse,
     SendOTPRequest,
     VerifyOTPRequest,
     OTPResponse,
 )
-from app.services.auth_service import authenticate_user
+from app.services.auth_service import authenticate_user, get_user_role_by_email
 from app.services.otp_service import send_otp, verify_otp
 from app.utils.jwt import verify_refresh_token, create_access_token, create_refresh_token
 from app.core.security import oauth2_scheme
@@ -30,6 +32,11 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     - **Franchise**: provide email + password + franchise_code.
     """
     return await authenticate_user(db, request)
+
+
+@router.post("/role", response_model=RoleCheckResponse)
+async def get_role(request: RoleCheckRequest, db: AsyncSession = Depends(get_db)):
+    return await get_user_role_by_email(db, request.email)
 
 
 @router.post("/refresh", response_model=TokenResponse)

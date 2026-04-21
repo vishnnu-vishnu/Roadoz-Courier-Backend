@@ -5,7 +5,7 @@ from app.models.user import User, UserRole
 from app.models.franchise import Franchise
 from app.core.security import verify_password
 from app.utils.jwt import create_access_token, create_refresh_token
-from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.auth import LoginRequest, TokenResponse, RoleCheckResponse
 
 
 async def authenticate_user(db: AsyncSession, request: LoginRequest) -> TokenResponse:
@@ -51,3 +51,14 @@ async def authenticate_user(db: AsyncSession, request: LoginRequest) -> TokenRes
         refresh_token=create_refresh_token(token_data),
         role=role,
     )
+
+
+async def get_user_role_by_email(db: AsyncSession, email: str) -> RoleCheckResponse:
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        return RoleCheckResponse(role=None, requires_franchise_code=False)
+
+    role = UserRole(user.role)
+    return RoleCheckResponse(role=role, requires_franchise_code=(role == UserRole.FRANCHISE))

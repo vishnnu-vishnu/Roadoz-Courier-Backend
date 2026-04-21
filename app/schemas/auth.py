@@ -9,6 +9,15 @@ class LoginRequest(BaseModel):
     franchise_code: Optional[str] = None  # Required only for franchise login
 
 
+class RoleCheckRequest(BaseModel):
+    email: EmailStr
+
+
+class RoleCheckResponse(BaseModel):
+    role: Optional[UserRole] = None
+    requires_franchise_code: bool
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
