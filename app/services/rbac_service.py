@@ -317,9 +317,14 @@ async def get_role(db: AsyncSession, role_id: str) -> RoleWithPermissionsOut:
     )
     permissions = [r[0] for r in perm_rows.all()]
 
-    base = RoleWithPermissionsOut.model_validate(role)
-    base.permissions = permissions
-    return base
+    return RoleWithPermissionsOut(
+        id=role.id,
+        name=role.name,
+        is_active=role.is_active,
+        created_at=role.created_at,
+        updated_at=role.updated_at,
+        permissions=permissions,
+    )
 
 
 async def update_role(db: AsyncSession, role_id: str, data: RoleUpdateRequest) -> RoleWithPermissionsOut:
