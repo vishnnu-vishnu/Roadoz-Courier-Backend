@@ -53,7 +53,7 @@ async def create_franchise(db: AsyncSession, data: FranchiseCreate) -> Franchise
         password_hash=get_password_hash(data.password),
         phone=data.mobile_number,
         address=data.current_address,
-        role=UserRole.FRANCHISE,
+        role=UserRole.FRANCHISE.value,
     )
     db.add(user)
     await db.flush()
