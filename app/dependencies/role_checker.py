@@ -5,7 +5,11 @@ from app.core.database import get_db
 from app.core.security import oauth2_scheme
 from app.utils.jwt import verify_access_token
 from app.utils.redis import is_token_blacklisted
-from app.models.user import User, UserRole
+from app.models.user import User
+from app.models.user_role import UserRole
+from app.models.role import Role
+from app.models.role_permission import RolePermission
+from app.models.permission import Permission
 
 
 async def get_current_user(
@@ -40,41 +44,41 @@ async def get_current_user(
     return user
 
 
-async def get_current_super_admin(current_user: User = Depends(get_current_user)) -> User:
-    if UserRole(current_user.role) != UserRole.SUPER_ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Super Admin access required")
-    return current_user
+async def get_user_role(db: AsyncSession, user_id: str) -> Role | None:
+    result = await db.execute(
+        select(Role)
+        .join(UserRole, UserRole.role_id == Role.id)
+        .where(UserRole.user_id == user_id)
+    )
+    return result.scalar_one_or_none()
 
 
-async def get_current_franchise(current_user: User = Depends(get_current_user)) -> User:
-    if UserRole(current_user.role) != UserRole.FRANCHISE:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Franchise access required")
-    return current_user
+async def get_user_permissions(db: AsyncSession, user_id: str) -> list[str]:
+    result = await db.execute(
+        select(Permission.code)
+        .join(RolePermission, RolePermission.permission_id == Permission.id)
+        .join(UserRole, UserRole.role_id == RolePermission.role_id)
+        .where(UserRole.user_id == user_id)
+        .where(Permission.is_active.is_(True))
+    )
+    return [row[0] for row in result.all()]
 
 
-def require_permission(action: str):
-    async def _checker(current_user: User = Depends(get_current_user)) -> User:
-        role = UserRole(current_user.role)
-        if role == UserRole.SUPER_ADMIN:
+def require_permission(permission_code: str):
+    async def _checker(
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ) -> User:
+        role = await get_user_role(db, current_user.id)
+        if role and role.name.lower() == "super_admin":
             return current_user
 
-        flag_map = {
-            "add": "can_add",
-            "edit": "can_edit",
-            "delete": "can_delete",
-            "view": "can_view",
-        }
-        field = flag_map.get(action)
-        if not field:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Invalid permission action")
-        if not bool(getattr(current_user, field, False)):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{action.title()} permission required")
+        perms = await get_user_permissions(db, current_user.id)
+        if permission_code not in perms:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permission denied",
+            )
         return current_user
 
     return _checker
-
-
-require_add = require_permission("add")
-require_edit = require_permission("edit")
-require_delete = require_permission("delete")
-require_view = require_permission("view")

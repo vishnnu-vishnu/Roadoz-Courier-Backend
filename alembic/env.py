@@ -9,6 +9,11 @@ from alembic import context
 from app.core.database import Base
 from app.models.user import User       # noqa: F401
 from app.models.franchise import Franchise  # noqa: F401
+from app.models.franchise_code_counter import FranchiseCodeCounter  # noqa: F401
+from app.models.role import Role  # noqa: F401
+from app.models.permission import Permission  # noqa: F401
+from app.models.role_permission import RolePermission  # noqa: F401
+from app.models.user_role import UserRole  # noqa: F401
 from app.core.config import settings
 
 config = context.config

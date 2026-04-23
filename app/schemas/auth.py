@@ -1,6 +1,10 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from app.models.user import UserRole
+
+
+class RoleOut(BaseModel):
+    id: str
+    name: str
 
 
 class LoginRequest(BaseModel):
@@ -14,7 +18,7 @@ class RoleCheckRequest(BaseModel):
 
 
 class RoleCheckResponse(BaseModel):
-    role: Optional[UserRole] = None
+    role: Optional[RoleOut] = None
     requires_franchise_code: bool
 
 
@@ -22,7 +26,8 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-    role: UserRole
+    role: Optional[RoleOut] = None
+    permissions: list[str] = []
 
 
 class RefreshTokenRequest(BaseModel):

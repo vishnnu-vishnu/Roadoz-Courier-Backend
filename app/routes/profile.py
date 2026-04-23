@@ -19,7 +19,7 @@ from app.models.user import User
 from app.core.security import get_password_hash, verify_password
 from app.utils.redis import cache_delete
 from app.services.otp_service import send_otp, verify_otp
-from app.dependencies.role_checker import require_view, require_edit
+from app.dependencies.role_checker import require_permission
 
 router = APIRouter(prefix="/profile", tags=["Profile"])
 
@@ -36,7 +36,7 @@ MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
 @router.get("", response_model=UserResponse)
 async def get_profile(
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_view),
+    _: User = Depends(require_permission("profile:view")),
 ):
     """Get the profile of the currently authenticated user. Password is never returned."""
     return UserResponse.model_validate(current_user)
@@ -49,7 +49,7 @@ async def update_profile(
     data: UserUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_edit),
+    _: User = Depends(require_permission("profile:edit")),
 ):
     """
     Update the authenticated user's profile.
@@ -79,7 +79,7 @@ async def upload_profile_image(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_edit),
+    _: User = Depends(require_permission("profile:edit")),
 ):
     """Upload a new profile image. Returns the stored file path/URL."""
     if file.content_type not in ALLOWED_IMAGE_TYPES:
@@ -123,7 +123,7 @@ async def upload_profile_image(
 @router.get("/image")
 async def get_profile_image(
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_view),
+    _: User = Depends(require_permission("profile:view")),
 ):
     """Get the current user's profile image URL."""
     if not current_user.profile_image:
@@ -141,7 +141,7 @@ async def change_password_request(
     data: ChangePasswordRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_edit),
+    _: User = Depends(require_permission("profile:edit")),
 ):
     """
     Step 1 of change-password flow.
@@ -197,7 +197,7 @@ async def change_password_verify(
     data: OTPVerifyRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: User = Depends(require_edit),
+    _: User = Depends(require_permission("profile:edit")),
 ):
     """
     Step 2 of change-password flow.

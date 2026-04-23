@@ -1,15 +1,19 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException, status
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.models.franchise import Franchise
+from app.models.user_role import UserRole
+from app.models.role import Role
+from app.models.role_permission import RolePermission
+from app.models.permission import Permission
 from app.core.security import verify_password
 from app.utils.jwt import create_access_token, create_refresh_token
-from app.schemas.auth import LoginRequest, TokenResponse, RoleCheckResponse
+from app.schemas.auth import LoginRequest, TokenResponse, RoleCheckResponse, RoleOut
 
 
 async def authenticate_user(db: AsyncSession, request: LoginRequest) -> TokenResponse:
-    """Unified login for Super Admin and Franchise."""
+    """Unified login with classic RBAC role+permissions context."""
 
     result = await db.execute(select(User).where(User.email == request.email))
     user = result.scalar_one_or_none()
@@ -23,10 +27,15 @@ async def authenticate_user(db: AsyncSession, request: LoginRequest) -> TokenRes
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled")
 
-    role = UserRole(user.role)  # coerce string → enum
+    role_row = await db.execute(
+        select(Role)
+        .join(UserRole, UserRole.role_id == Role.id)
+        .where(UserRole.user_id == user.id)
+    )
+    role = role_row.scalar_one_or_none()
 
-    # Franchise-specific: require franchise_code
-    if role == UserRole.FRANCHISE:
+    # Franchise-specific: require franchise_code when role name is 'franchise'
+    if role and role.name.lower() == "franchise":
         if not request.franchise_code:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -44,20 +53,27 @@ async def authenticate_user(db: AsyncSession, request: LoginRequest) -> TokenRes
         if not franchise.is_active:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Franchise account is disabled")
 
+    perm_rows = await db.execute(
+        select(Permission.code)
+        .join(RolePermission, RolePermission.permission_id == Permission.id)
+        .where(RolePermission.role_id == role.id if role else False)
+        .where(Permission.is_active.is_(True))
+    )
+    permissions = [r[0] for r in perm_rows.all()] if role else []
+
     token_data = {
         "user_id": user.id,
         "email": user.email,
-        "role": role.value,
-        "can_add": bool(getattr(user, "can_add", False)),
-        "can_edit": bool(getattr(user, "can_edit", False)),
-        "can_delete": bool(getattr(user, "can_delete", False)),
-        "can_view": bool(getattr(user, "can_view", True)),
+        "role_id": role.id if role else None,
+        "role": role.name if role else None,
+        "permissions": permissions,
     }
 
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
-        role=role,
+        role=(RoleOut(id=role.id, name=role.name) if role else None),
+        permissions=permissions,
     )
 
 
@@ -68,5 +84,13 @@ async def get_user_role_by_email(db: AsyncSession, email: str) -> RoleCheckRespo
     if not user:
         return RoleCheckResponse(role=None, requires_franchise_code=False)
 
-    role = UserRole(user.role)
-    return RoleCheckResponse(role=role, requires_franchise_code=(role == UserRole.FRANCHISE))
+    role_row = await db.execute(
+        select(Role)
+        .join(UserRole, UserRole.role_id == Role.id)
+        .where(UserRole.user_id == user.id)
+    )
+    role = role_row.scalar_one_or_none()
+    return RoleCheckResponse(
+        role=(RoleOut(id=role.id, name=role.name) if role else None),
+        requires_franchise_code=(role is not None and role.name.lower() == "franchise"),
+    )

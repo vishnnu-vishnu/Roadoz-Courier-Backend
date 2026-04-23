@@ -1,7 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
-from app.models.user import UserRole
 
 
 class UserBase(BaseModel):
@@ -14,7 +13,6 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    role: UserRole = UserRole.FRANCHISE
 
 
 class UserUpdate(BaseModel):
@@ -33,18 +31,11 @@ class UserResponse(BaseModel):
     address: Optional[str] = None
     location: Optional[str] = None
     profile_image: Optional[str] = None
-    role: UserRole
     is_active: bool
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
-
-    @classmethod
-    def model_validate(cls, obj, *args, **kwargs):
-        if hasattr(obj, "role") and isinstance(obj.role, str):
-            obj.__dict__["role"] = UserRole(obj.role)
-        return super().model_validate(obj, *args, **kwargs)
 
 
 # ── Change Password schemas ────────────────────────────────────────────────────

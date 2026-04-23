@@ -4,8 +4,10 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
 from fastapi import HTTPException, status
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.models.franchise import Franchise
+from app.models.role import Role
+from app.models.user_role import UserRole
 from app.models.franchise_code_counter import FranchiseCodeCounter
 from app.schemas.franchise import FranchiseCreate, FranchiseUpdate, FranchiseResponse, FranchiseListResponse
 from app.core.security import get_password_hash
@@ -53,10 +55,23 @@ async def create_franchise(db: AsyncSession, data: FranchiseCreate) -> Franchise
         password_hash=get_password_hash(data.password),
         phone=data.mobile_number,
         address=data.current_address,
-        role=UserRole.FRANCHISE.value,
     )
     db.add(user)
     await db.flush()
+
+    role_result = await db.execute(select(Role).where(Role.name == "franchise"))
+    franchise_role = role_result.scalar_one_or_none()
+    if not franchise_role:
+        franchise_role = Role(id=str(uuid.uuid4()), name="franchise")
+        db.add(franchise_role)
+        await db.flush()
+
+    user_role_result = await db.execute(select(UserRole).where(UserRole.user_id == user.id))
+    mapping = user_role_result.scalar_one_or_none()
+    if not mapping:
+        db.add(UserRole(user_id=user.id, role_id=franchise_role.id))
+    else:
+        mapping.role_id = franchise_role.id
 
     franchise = Franchise(
         id=str(uuid.uuid4()),

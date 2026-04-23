@@ -51,16 +51,19 @@ async def refresh_token(request: RefreshTokenRequest):
     token_data = {
         "user_id": payload["user_id"],
         "email": payload["email"],
-        "role": payload["role"],
-        "can_add": bool(payload.get("can_add", False)),
-        "can_edit": bool(payload.get("can_edit", False)),
-        "can_delete": bool(payload.get("can_delete", False)),
-        "can_view": bool(payload.get("can_view", True)),
+        "role_id": payload.get("role_id"),
+        "role": payload.get("role"),
+        "permissions": list(payload.get("permissions") or []),
     }
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
-        role=payload["role"],
+        role=(
+            {"id": payload.get("role_id"), "name": payload.get("role")}
+            if payload.get("role")
+            else None
+        ),
+        permissions=list(payload.get("permissions") or []),
     )
 
 

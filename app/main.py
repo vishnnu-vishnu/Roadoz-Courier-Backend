@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.core.security import get_password_hash
 from app.middleware.auth_middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
-from app.routes import auth, franchise, profile, users, websocket
+from app.routes import auth, franchise, profile, websocket, rbac
 
 logging.basicConfig(
     level=logging.DEBUG if settings.DEBUG else logging.INFO,
@@ -23,25 +23,41 @@ logger = logging.getLogger(__name__)
 async def _seed_super_admin():
     """Create the super admin user if it doesn't already exist."""
     from app.core.database import AsyncSessionLocal
-    from app.models.user import User, UserRole
+    from app.models.user import User
+    from app.models.role import Role
+    from app.models.user_role import UserRole
     from sqlalchemy import select
     import uuid
 
     async with AsyncSessionLocal() as db:
+        role_result = await db.execute(select(Role).where(Role.name == "super_admin"))
+        super_admin_role = role_result.scalar_one_or_none()
+        if not super_admin_role:
+            super_admin_role = Role(id=str(uuid.uuid4()), name="super_admin")
+            db.add(super_admin_role)
+            await db.flush()
+
         result = await db.execute(select(User).where(User.email == settings.SUPER_ADMIN_EMAIL))
-        if not result.scalar_one_or_none():
+        admin = result.scalar_one_or_none()
+        if not admin:
             admin = User(
                 id=str(uuid.uuid4()),
                 name=settings.SUPER_ADMIN_NAME,
                 email=settings.SUPER_ADMIN_EMAIL,
                 password_hash=get_password_hash(settings.SUPER_ADMIN_PASSWORD),
-                role=UserRole.SUPER_ADMIN.value,  # store as string for SQLite
             )
             db.add(admin)
-            await db.commit()
-            logger.info(f"Super admin created: {settings.SUPER_ADMIN_EMAIL}")
+
+        # Ensure admin has super_admin role assigned
+        user_role_result = await db.execute(select(UserRole).where(UserRole.user_id == admin.id))
+        mapping = user_role_result.scalar_one_or_none()
+        if not mapping:
+            db.add(UserRole(user_id=admin.id, role_id=super_admin_role.id))
         else:
-            logger.info("Super admin already exists")
+            mapping.role_id = super_admin_role.id
+
+        await db.commit()
+        logger.info(f"Super admin ensured: {settings.SUPER_ADMIN_EMAIL}")
 
 
 @asynccontextmanager
@@ -127,7 +143,7 @@ API_PREFIX = "/api/v1"
 app.include_router(auth.router,      prefix=API_PREFIX)
 app.include_router(franchise.router, prefix=API_PREFIX)
 app.include_router(profile.router,   prefix=API_PREFIX)
-app.include_router(users.router,     prefix=API_PREFIX)
+app.include_router(rbac.router,      prefix=API_PREFIX)
 app.include_router(websocket.router)
 
 
