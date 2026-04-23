@@ -10,7 +10,14 @@ from app.services.franchise_service import (
     update_franchise,
     delete_franchise,
 )
-from app.dependencies.role_checker import get_current_super_admin, get_current_user
+from app.dependencies.role_checker import (
+    get_current_super_admin,
+    get_current_user,
+    require_add,
+    require_edit,
+    require_delete,
+    require_view,
+)
 from app.models.user import User
 
 router = APIRouter(prefix="/franchise", tags=["Franchise"])
@@ -21,6 +28,7 @@ async def create(
     data: FranchiseCreate,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_super_admin),
+    __: User = Depends(require_add),
 ):
     """Create a new franchise. **Super Admin only.**"""
     return await create_franchise(db, data)
@@ -33,6 +41,7 @@ async def list_franchises(
     search: Optional[str] = Query(None, description="Search by name, email, phone, or code"),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
+    __: User = Depends(require_view),
 ):
     """
     List all franchises with pagination and search.
@@ -48,6 +57,7 @@ async def get_by_id(
     franchise_id: str,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
+    __: User = Depends(require_view),
 ):
     """Get a specific franchise by ID."""
     return await get_franchise_by_id(db, franchise_id)
@@ -59,6 +69,7 @@ async def update(
     data: FranchiseUpdate,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_super_admin),
+    __: User = Depends(require_edit),
 ):
     """Update a franchise. **Super Admin only.**"""
     return await update_franchise(db, franchise_id, data)
@@ -69,6 +80,7 @@ async def delete(
     franchise_id: str,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_super_admin),
+    __: User = Depends(require_delete),
 ):
     """Delete a franchise. **Super Admin only.**"""
     return await delete_franchise(db, franchise_id)

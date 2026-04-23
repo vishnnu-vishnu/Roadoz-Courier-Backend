@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.core.security import get_password_hash
 from app.middleware.auth_middleware import RequestLoggingMiddleware, SecurityHeadersMiddleware
-from app.routes import auth, franchise, profile, websocket
+from app.routes import auth, franchise, profile, users, websocket
 
 logging.basicConfig(
     level=logging.DEBUG if settings.DEBUG else logging.INFO,
@@ -127,6 +127,7 @@ API_PREFIX = "/api/v1"
 app.include_router(auth.router,      prefix=API_PREFIX)
 app.include_router(franchise.router, prefix=API_PREFIX)
 app.include_router(profile.router,   prefix=API_PREFIX)
+app.include_router(users.router,     prefix=API_PREFIX)
 app.include_router(websocket.router)
 
 

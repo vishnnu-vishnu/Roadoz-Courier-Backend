@@ -52,6 +52,10 @@ async def refresh_token(request: RefreshTokenRequest):
         "user_id": payload["user_id"],
         "email": payload["email"],
         "role": payload["role"],
+        "can_add": bool(payload.get("can_add", False)),
+        "can_edit": bool(payload.get("can_edit", False)),
+        "can_delete": bool(payload.get("can_delete", False)),
+        "can_view": bool(payload.get("can_view", True)),
     }
     return TokenResponse(
         access_token=create_access_token(token_data),

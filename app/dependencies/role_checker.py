@@ -50,3 +50,31 @@ async def get_current_franchise(current_user: User = Depends(get_current_user)) 
     if UserRole(current_user.role) != UserRole.FRANCHISE:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Franchise access required")
     return current_user
+
+
+def require_permission(action: str):
+    async def _checker(current_user: User = Depends(get_current_user)) -> User:
+        role = UserRole(current_user.role)
+        if role == UserRole.SUPER_ADMIN:
+            return current_user
+
+        flag_map = {
+            "add": "can_add",
+            "edit": "can_edit",
+            "delete": "can_delete",
+            "view": "can_view",
+        }
+        field = flag_map.get(action)
+        if not field:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Invalid permission action")
+        if not bool(getattr(current_user, field, False)):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"{action.title()} permission required")
+        return current_user
+
+    return _checker
+
+
+require_add = require_permission("add")
+require_edit = require_permission("edit")
+require_delete = require_permission("delete")
+require_view = require_permission("view")
