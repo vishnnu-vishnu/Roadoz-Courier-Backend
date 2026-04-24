@@ -18,6 +18,7 @@ class UserRole(Base):
 
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     role_id: Mapped[str] = mapped_column(String(36), ForeignKey("roles.id", ondelete="RESTRICT"), nullable=False)
+    assigned_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -26,4 +27,5 @@ class UserRole(Base):
     )
 
     role = relationship("Role", back_populates="users")
-    user = relationship("User")
+    user = relationship("User", foreign_keys=[user_id])
+    assigner = relationship("User", foreign_keys=[assigned_by])

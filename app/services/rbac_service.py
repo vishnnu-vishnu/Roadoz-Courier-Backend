@@ -153,19 +153,43 @@ async def list_users(
     page: int = 1,
     limit: int = 10,
     search: str | None = None,
+    franchise_id: str | None = None,
+    role: str | None = None,
+    assigned_by: str | None = None,
 ) -> UserListResponse:
     caller_role = await _get_caller_role_name(db, current_user.id)
 
     base_filter = []
+    needs_user_role_join = False
 
     if caller_role == "franchise":
         franchise = await _get_franchise_for_owner(db, current_user.id)
         if not franchise:
             return UserListResponse(items=[], total=0, page=page, limit=limit, pages=0)
         base_filter.append(User.franchise_id == franchise.id)
+    elif franchise_id is not None:
+        # Super admin filtering by specific franchise
+        if franchise_id == "none":
+            base_filter.append(User.franchise_id.is_(None))
+        else:
+            base_filter.append(User.franchise_id == franchise_id)
 
     query = select(User).order_by(User.created_at.desc(), User.id.desc())
     count_query = select(func.count()).select_from(User)
+
+    # Filter by role name or assigned_by — both need user_roles join
+    if role or assigned_by:
+        needs_user_role_join = True
+        query = query.join(UserRole, UserRole.user_id == User.id)
+        count_query = count_query.join(UserRole, UserRole.user_id == User.id)
+
+    if role:
+        query = query.join(Role, Role.id == UserRole.role_id).where(Role.name == role)
+        count_query = count_query.join(Role, Role.id == UserRole.role_id).where(Role.name == role)
+
+    if assigned_by:
+        query = query.where(UserRole.assigned_by == assigned_by)
+        count_query = count_query.where(UserRole.assigned_by == assigned_by)
 
     for f in base_filter:
         query = query.where(f)
@@ -465,8 +489,9 @@ async def assign_role_to_user(
     existing = (await db.execute(select(UserRole).where(UserRole.user_id == user_id))).scalar_one_or_none()
     if existing:
         existing.role_id = role_id
+        existing.assigned_by = current_user.id
     else:
-        db.add(UserRole(user_id=user_id, role_id=role_id))
+        db.add(UserRole(user_id=user_id, role_id=role_id, assigned_by=current_user.id))
 
     await db.flush()
     return {"message": "Role assigned successfully", "user_id": user_id, "role": role.name}
