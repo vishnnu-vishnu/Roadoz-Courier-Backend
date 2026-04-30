@@ -39,6 +39,9 @@ class Order(Base):
     applicable_weight_kg: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False, server_default=text("0"))
     total_boxes: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
 
+    # Shipping charge (debited from wallet)
+    shipping_charge: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, server_default=text("0"))
+
     # Other details
     gst_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     eway_bill_number: Mapped[str | None] = mapped_column(String(30), nullable=True)

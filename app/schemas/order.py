@@ -189,6 +189,8 @@ class OrderCreate(BaseModel):
     items: List[OrderItemCreate] = Field(..., min_length=1)
     packages: List[OrderPackageCreate] = Field(..., min_length=1)
 
+    shipping_charge: float = Field(0, ge=0, description="Shipping charge to debit from wallet")
+
     gst_number: Optional[str] = Field(None, max_length=20)
     eway_bill_number: Optional[str] = Field(None, max_length=30)
 
@@ -210,6 +212,7 @@ class OrderOut(BaseModel):
     items: List[OrderItemOut]
     packages: List[OrderPackageOut]
     weight_summary: WeightSummary
+    shipping_charge: float = 0
     gst_number: Optional[str] = None
     eway_bill_number: Optional[str] = None
     status: str
