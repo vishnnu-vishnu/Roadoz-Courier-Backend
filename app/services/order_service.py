@@ -14,6 +14,7 @@ from app.models.consignee import Consignee
 from app.models.order import Order, OrderItem, OrderPackage
 from app.models.role import Role
 from app.models.user_role import UserRole
+from app.services.wallet_service import debit_for_order
 from app.schemas.order import (
     PickupAddressCreate,
     PickupAddressOut,
@@ -102,6 +103,7 @@ def _build_order_out(order: Order) -> OrderOut:
         items=[OrderItemOut.model_validate(i) for i in order.items],
         packages=[OrderPackageOut.model_validate(p) for p in order.packages],
         weight_summary=ws,
+        shipping_charge=float(order.shipping_charge),
         gst_number=order.gst_number,
         eway_bill_number=order.eway_bill_number,
         status=order.status,
@@ -324,8 +326,13 @@ async def create_order(
     order.total_weight_kg = round(total_weight, 2)
     order.total_vol_weight_kg = round(total_vol, 2)
     order.applicable_weight_kg = round(applicable, 2)
+    order.shipping_charge = data.shipping_charge
 
     await db.flush()
+
+    # Debit wallet if shipping charge > 0 and franchise is linked
+    if data.shipping_charge > 0 and franchise_id:
+        await debit_for_order(db, franchise_id, order.id, data.shipping_charge)
 
     # Reload all columns (created_at, updated_at, etc.) + relationships
     await db.refresh(order)

@@ -1,0 +1,68 @@
+from pydantic import BaseModel, Field
+from typing import Optional, List
+from datetime import datetime, date
+from enum import Enum
+
+
+class InvoiceStatus(str, Enum):
+    DRAFT = "draft"
+    ISSUED = "issued"
+    PAID = "paid"
+
+
+# ── Invoice Order detail ─────────────────────────────────────────────────
+
+
+class InvoiceOrderOut(BaseModel):
+    id: str
+    order_id: str
+    shipping_charge: float
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Invoice ──────────────────────────────────────────────────────────────
+
+
+class InvoiceOut(BaseModel):
+    id: str
+    invoice_number: str
+    franchise_id: str
+    description: str
+    period_start: date
+    period_end: date
+    subtotal: float
+    tax_rate: float
+    tax_amount: float
+    total_amount: float
+    orders_count: int
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    invoice_orders: List[InvoiceOrderOut] = []
+
+    model_config = {"from_attributes": True}
+
+
+class InvoiceListResponse(BaseModel):
+    items: List[InvoiceOut]
+    total: int
+    page: int
+    limit: int
+    pages: int
+
+
+# ── Requests ─────────────────────────────────────────────────────────────
+
+
+class InvoiceGenerateRequest(BaseModel):
+    franchise_id: str = Field(..., description="Franchise to generate invoice for")
+    period_start: date = Field(..., description="Billing period start date")
+    period_end: date = Field(..., description="Billing period end date")
+    description: Optional[str] = Field(None, max_length=500, description="Custom description")
+    tax_rate: float = Field(18.0, ge=0, le=100, description="Tax rate percentage (default 18%)")
+
+
+class InvoiceMarkPaidRequest(BaseModel):
+    remarks: Optional[str] = Field(None, max_length=500)
