@@ -16,7 +16,7 @@ env/
 ENV/
 .venv/
 venv.bak/
-myenv/
+/myenv/
 
 # =========================
 # Environment variables
