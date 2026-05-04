@@ -242,6 +242,7 @@ class OrderResponse(BaseModel):
     order_type: str
     payment_method: str
     order_value: float
+    barcode: Optional[str] = None
     created_at: datetime
 
     class Config:
