@@ -215,6 +215,7 @@ class OrderOut(BaseModel):
     shipping_charge: float = 0
     gst_number: Optional[str] = None
     eway_bill_number: Optional[str] = None
+    barcode: Optional[str] = None
     status: str
     created_by: str
     franchise_id: Optional[str] = None
