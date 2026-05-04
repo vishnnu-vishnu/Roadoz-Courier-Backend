@@ -1,6 +1,8 @@
+import base64
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status as http_status
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -123,6 +125,20 @@ async def get_filtered_orders_endpoint(
         "status_filter": status,
         "data": orders
     }
+
+
+@router.get("/{order_id}/barcode")
+async def get_order_barcode_endpoint(
+    order_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: User = Depends(require_permission("orders:view")),
+):
+    order = await get_order(db, order_id, current_user)
+    if not order.barcode:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Barcode not available")
+    png_bytes = base64.b64decode(order.barcode)
+    return Response(content=png_bytes, media_type="image/png")
 
 
 @router.get("/{order_id}", response_model=OrderOut)

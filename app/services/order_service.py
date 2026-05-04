@@ -15,6 +15,7 @@ from app.models.order import Order, OrderItem, OrderPackage,OrderStatus
 from app.models.role import Role
 from app.models.user_role import UserRole
 from app.services.wallet_service import debit_for_order
+from app.utils.barcode import generate_barcode_base64
 from app.schemas.order import (
     PickupAddressCreate,
     PickupAddressOut,
@@ -110,6 +111,7 @@ def _build_order_out(order: Order) -> OrderOut:
         shipping_charge=float(order.shipping_charge),
         gst_number=order.gst_number,
         eway_bill_number=order.eway_bill_number,
+        barcode=order.barcode,
         status=order.status,
         created_by=order.created_by,
         franchise_id=order.franchise_id,
@@ -331,6 +333,9 @@ async def create_order(
     order.total_vol_weight_kg = round(total_vol, 2)
     order.applicable_weight_kg = round(applicable, 2)
     order.shipping_charge = data.shipping_charge
+
+    # Generate barcode from order number
+    order.barcode = generate_barcode_base64(order_number)
 
     await db.flush()
 

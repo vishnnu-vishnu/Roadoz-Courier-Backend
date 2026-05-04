@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, DateTime, ForeignKey, Numeric, Integer, text
+from sqlalchemy import String, Text, DateTime, ForeignKey, Numeric, Integer, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -62,6 +62,9 @@ class Order(Base):
     # Other details
     gst_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     eway_bill_number: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
+    # Barcode (base64 PNG)
+    barcode: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Status
     # status: Mapped[str] = mapped_column(String(30), nullable=False, server_default=text("'pending'"))
