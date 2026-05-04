@@ -11,7 +11,7 @@ from app.models.user import User
 from app.models.franchise import Franchise
 from app.models.pickup_address import PickupAddress
 from app.models.consignee import Consignee
-from app.models.order import Order, OrderItem, OrderPackage
+from app.models.order import Order, OrderItem, OrderPackage,OrderStatus
 from app.models.role import Role
 from app.models.user_role import UserRole
 from app.services.wallet_service import debit_for_order
@@ -28,7 +28,11 @@ from app.schemas.order import (
     OrderPackageOut,
     OrderListResponse,
     WeightSummary,
+    OrderStatus
 )
+from typing import List, Optional,Tuple
+from sqlalchemy.orm import Session
+
 
 logger = logging.getLogger(__name__)
 
@@ -278,7 +282,7 @@ async def create_order(
         order_value=data.order_value,
         gst_number=data.gst_number,
         eway_bill_number=data.eway_bill_number,
-        status="pending",
+        status=OrderStatus.MANIFESTED,
         created_by=current_user.id,
         franchise_id=franchise_id,
     )
@@ -405,7 +409,6 @@ async def get_order(
     if not order:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
-    # Access control
     caller_role = await _get_caller_role_name(db, current_user.id)
     if caller_role != "super_admin":
         franchise_id = await _resolve_franchise_id(db, current_user)
@@ -416,3 +419,31 @@ async def get_order(
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
     return _build_order_out(order)
+
+
+
+async def get_filtered_orders_service(
+    db: AsyncSession,
+    status: Optional[OrderStatus] = None,
+    limit: int = 10,
+    offset: int = 0
+):
+
+    query = select(Order)
+
+    if status:
+        query = query.where(Order.status == status.value)  # important
+
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
+    # fetch data
+    result = await db.execute(
+        query.order_by(Order.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    orders = result.scalars().all()
+
+    return total, orders

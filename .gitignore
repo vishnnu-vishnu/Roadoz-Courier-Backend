@@ -83,3 +83,5 @@ dist/
 # Docker (optional)
 # =========================
 docker-compose.override.yml
+
+/alembic

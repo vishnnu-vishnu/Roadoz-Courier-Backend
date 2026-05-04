@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
-
+from app.models.order import OrderStatus
 
 # ── Enums ──────────────────────────────────────────────────────────────────
 
@@ -230,3 +230,24 @@ class OrderListResponse(BaseModel):
     page: int
     limit: int
     pages: int
+
+
+
+
+class OrderResponse(BaseModel):
+    id: str
+    order_number: str
+    status: OrderStatus
+    order_type: str
+    payment_method: str
+    order_value: float
+    created_at: datetime
+
+    class Config:
+        from_attributes = True  
+
+
+class OrderStatusListResponse(BaseModel):
+    total: int
+    status_filter: Optional[OrderStatus]
+    data: List[OrderResponse]

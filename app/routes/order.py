@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.dependencies.role_checker import get_current_user, require_permission
 from app.models.user import User
+from app.models.order import OrderStatus
 from app.schemas.order import (
     PickupAddressCreate,
     PickupAddressOut,
@@ -16,6 +17,7 @@ from app.schemas.order import (
     OrderCreate,
     OrderOut,
     OrderListResponse,
+    OrderStatusListResponse,
 )
 from app.services.order_service import (
     search_pickup_addresses,
@@ -25,6 +27,7 @@ from app.services.order_service import (
     create_order,
     list_orders,
     get_order,
+    get_filtered_orders_service
 )
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
@@ -105,6 +108,22 @@ async def list_orders_endpoint(
         search=search, status_filter=status, order_type=order_type,
     )
 
+@router.get("/status", response_model=OrderStatusListResponse)
+async def get_filtered_orders_endpoint(
+    status: Optional[OrderStatus] = Query(None),
+    limit: int = Query(10, le=100),
+    offset: int = Query(0),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    total, orders = await get_filtered_orders_service(db, status, limit, offset)
+
+    return {
+        "total": total,
+        "status_filter": status,
+        "data": orders
+    }
+
 
 @router.get("/{order_id}", response_model=OrderOut)
 async def get_order_endpoint(
@@ -114,3 +133,5 @@ async def get_order_endpoint(
     _: User = Depends(require_permission("orders:view")),
 ):
     return await get_order(db, order_id, current_user)
+
+
